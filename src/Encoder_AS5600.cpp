@@ -32,10 +32,12 @@ const int32_t   AS5600_RESOLUTION_PPR_1_4 = AS5600_RESOLUTION_PPR / 4;
 const int32_t   AS5600_RESOLUTION_PPR_3_4 = AS5600_RESOLUTION_PPR_1_4 * 3;
 
 
-Encoder_AS5600::Encoder_AS5600()
+Encoder_AS5600::Encoder_AS5600(float ratio)
 {
-    _wire = NULL;
-    _address = 0x00;
+    _wire           = NULL;
+    _address        = 0x00;
+    _pulse_count    = 0;
+    _ratio          = ratio;
 }
 
 Encoder_AS5600::~Encoder_AS5600()
@@ -60,7 +62,97 @@ uint16_t Encoder_AS5600::readAngle()
         _wire->beginTransmission(_address);
         _wire->write(AS5600_ANGLE);
         _wire->endTransmission(false);
-        _wire->requestFrom(_address, AS5600_ANGLE_SIZE);
-        _wire->read() << 8 | _wire->read();
+        _wire->requestFrom(_address, AS5600_ANGLE_SIZE);        
+
+        uint16_t angle = 0;
+        angle  = ((uint16_t)_wire->read() << 8) & 0x0F00;
+        angle |= (uint16_t)_wire->read();
+
+        return angle;
     }
+
+    return (uint16_t)0;
+}
+
+
+uint16_t Encoder_AS5600::readRawAngle()
+{
+    if(_wire != NULL) 
+    {
+        _wire->beginTransmission(_address);
+        _wire->write(AS5600_RAWANGLE);
+        _wire->endTransmission(false);
+        _wire->requestFrom(_address, AS5600_RAWANGLE_SIZE);        
+
+        uint16_t angle = 0;
+        angle  = ((uint16_t)_wire->read() << 8) & 0x0F00;
+        angle |= (uint16_t)_wire->read();
+
+        return angle;
+    }
+
+    return (uint16_t)0;
+}
+
+
+uint16_t Encoder_AS5600::readStatus()
+{
+    if(_wire != NULL) 
+    {
+
+
+    }
+
+    return (uint16_t)0;
+}
+
+
+int32_t Encoder_AS5600::readInterval()
+{
+    if(_wire != NULL)
+    {
+        int32_t interval = 0u;
+        uint16_t current_angle = readRawAngle();
+
+        if(_last_angle >= AS5600_RESOLUTION_PPR_3_4)
+        {
+            if(current_angle <= AS5600_RESOLUTION_PPR_1_4)
+            {
+                interval = AS5600_RESOLUTION_PPR - _last_angle + current_angle;
+            }
+            else
+            {
+                interval = current_angle - _last_angle;
+            }
+        }
+        else if(_last_angle <= AS5600_RESOLUTION_PPR_1_4)
+        {
+            if(current_angle >= AS5600_RESOLUTION_PPR_3_4)
+            {
+                interval = current_angle - AS5600_RESOLUTION_PPR - _last_angle;
+            }
+            else
+            {
+                interval = current_angle - _last_angle;
+            }
+        }
+        else{
+            interval = current_angle - _last_angle;
+        }        
+
+        _last_angle = current_angle;
+        _pulse_count += interval;
+
+        return interval;
+    }
+
+    return 0;
+}
+
+
+int64_t Encoder_AS5600::readPulseCount()
+{
+    readInterval();
+
+    return _pulse_count;
 }
