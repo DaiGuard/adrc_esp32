@@ -2,14 +2,17 @@
 #define __ENCOER_AS5600__
 
 
+#include <stdint.h>
+
+
 class TwoWire;
 
 
 class Encoder_AS5600
 {
     public:
-        Encoder_AS5600(){}
-        ~Encoder_AS5600(){}
+        Encoder_AS5600();
+        ~Encoder_AS5600();
 
         bool begin(TwoWire* wire, uint8_t address=0x36);
 

@@ -3,33 +3,33 @@
 #include <Wire.h>
 
 
-const uint8_t   ZMCO        = 0x00;
-const int32_t   ZMCO_SIZE   = 1;
-const uint8_t   ZPOS        = 0x01;
-const int32_t   ZPOS_SIZE   = 2;
-const uint8_t   MPOS        = 0x03;
-const int32_t   MPOS_SIZE   = 2;
-const uint8_t   MANG        = 0x05;
-const int32_t   MANG_SIZE   = 2;
-const uint8_t   CONF        = 0x07;
-const int32_t   CONF_SIZE   = 2;
-const uint8_t   RAWANGLE    = 0x0c;
-const int32_t   RAWANGLE_SIZE = 2;
-const uint8_t   ANGLE       = 0x0e;
-const int32_t   ANGLE_SiZE  = 2;
-const uint8_t   STATUS      = 0x0b;
-const int32_t   STATUS_SIZE = 2;
-const uint8_t   AGC         = 0x1a;
-const int32_t   AGC_SIZE    = 1;
-const uint8_t   MAGNITUDE   = 0x1b;
-const int32_t   MAGNITUDE_SiZE= 2;
-const uint8_t   BURN        = 0xff;
-const int32_t   BURN_SIZE   = 1;
+const uint8_t   AS5600_ZMCO        = 0x00;
+const uint8_t   AS5600_ZMCO_SIZE   = 1;
+const uint8_t   AS5600_ZPOS        = 0x01;
+const uint8_t   AS5600_ZPOS_SIZE   = 2;
+const uint8_t   AS5600_MPOS        = 0x03;
+const uint8_t   AS5600_MPOS_SIZE   = 2;
+const uint8_t   AS5600_MANG        = 0x05;
+const uint8_t   AS5600_MANG_SIZE   = 2;
+const uint8_t   AS5600_CONF        = 0x07;
+const uint8_t   AS5600_CONF_SIZE   = 2;
+const uint8_t   AS5600_RAWANGLE    = 0x0c;
+const uint8_t   AS5600_RAWANGLE_SIZE = 2;
+const uint8_t   AS5600_ANGLE       = 0x0e;
+const uint8_t   AS5600_ANGLE_SIZE  = 2;
+const uint8_t   AS5600_STATUS      = 0x0b;
+const uint8_t   AS5600_STATUS_SIZE = 2;
+const uint8_t   AS5600_AGC         = 0x1a;
+const uint8_t   AS5600_AGC_SIZE    = 1;
+const uint8_t   AS5600_MAGNITUDE   = 0x1b;
+const uint8_t   AS5600_MAGNITUDE_SIZE= 2;
+const uint8_t   AS5600_BURN        = 0xff;
+const uint8_t   AS5600_BURN_SIZE   = 1;
 
 
-const int32_t   RESOLUTION_PPR  = 4096;
-const int32_t   RESOLUTION_PPR_1_4 = RESOLUTION_PPR / 4;
-const int32_t   RESOLUTION_PPR_3_4 = RESOLUTION_PPR_1_4 * 3;
+const int32_t   AS5600_RESOLUTION_PPR  = 4096;
+const int32_t   AS5600_RESOLUTION_PPR_1_4 = AS5600_RESOLUTION_PPR / 4;
+const int32_t   AS5600_RESOLUTION_PPR_3_4 = AS5600_RESOLUTION_PPR_1_4 * 3;
 
 
 Encoder_AS5600::Encoder_AS5600()
@@ -48,6 +48,8 @@ bool Encoder_AS5600::begin(TwoWire* wire, uint8_t address)
 {
     _wire       = wire;
     _address    = address;
+
+    return true;
 }
 
 
@@ -56,9 +58,9 @@ uint16_t Encoder_AS5600::readAngle()
     if(_wire != NULL) 
     {
         _wire->beginTransmission(_address);
-        _wire->write(ANGLE);
+        _wire->write(AS5600_ANGLE);
         _wire->endTransmission(false);
-        _wire->requestFrom(_address, ANGLE_SIZE);
+        _wire->requestFrom(_address, AS5600_ANGLE_SIZE);
         _wire->read() << 8 | _wire->read();
     }
 }
