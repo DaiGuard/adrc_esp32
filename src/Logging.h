@@ -13,8 +13,29 @@
         } \
     } while(0)
 
-#define log_info(s, ...) log_base("I: ", s, ##__VA_ARGS__)
-#define log_erro(s, ...) log_base("E: ", s, ##__VA_ARGS__)
-#define log_warn(s, ...) log_base("W: ", s, ##__VA_ARGS__)
+#if VERBOSE_LEVEL > 0
+    #define log_erro(s, ...) log_base("E: ", s, ##__VA_ARGS__)
+#else
+    #define log_erro(s, ...)
+#endif
+
+#if VERBOSE_LEVEL > 1
+    #define log_warn(s, ...) log_base("W: ", s, ##__VA_ARGS__)
+#else
+    #define log_warn(s, ...)
+#endif
+
+#if VERBOSE_LEVEL > 2
+    #define log_info(s, ...) log_base("I: ", s, ##__VA_ARGS__)
+#else
+    #define log_info(s, ...)
+#endif
+
+#if VERBOSE_LEVEL > 3
+    #define log_debug(s, ...) log_base("D: ", s, ##__VA_ARGS__)
+#else
+    #define log_debug(s, ...)
+#endif
+
 
 #endif

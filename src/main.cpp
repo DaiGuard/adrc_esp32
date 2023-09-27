@@ -194,7 +194,7 @@ void loop()
     // デフォルトの情報出力
     else
     {
-        log_info("CurrentState=%02x", g_currentState);
+        log_debug("CurrentState=%02x", g_currentState);
     }
 
     // SensorDataPack sensor_data;
