@@ -1,14 +1,36 @@
 #include <Arduino.h>
+
+#include <micro_ros_platformio.h>
+#include <rcl/rcl.h>
+#include <rclc/rclc.h>
+#include <rclc/executor.h>
+#include <geometry_msgs/msg/twist.h>
+
+#if !defined(MICRO_ROS_TRANSPORT_ARDUINO_SERIAL)
+#error This example is only avaliable for Arduino framework with serial transport.
+#endif
+
 #include <Wire.h>
 #include <PS4Controller.h>
 
 #include "Logging.h"
+#include "Utils.h"
+
 #include "Encoder_AS5600.h"
 #include "Imu_BMX055.h"
 #include "Driver_DRV8835.h"
 
 // タスクハンドラ
 TaskHandle_t thp[2];
+
+// ROS関連変数
+rclc_executor_t executor;
+rclc_support_t support;
+rcl_allocator_t allocator;
+rcl_node_t node;
+rcl_timer_t timer;
+rcl_subscription_t cmd_vel_sub;
+geometry_msgs__msg__Twist cmd_vel_msg;
 
 
 // 状態遷移用の状態リスト
@@ -86,34 +108,36 @@ QueueHandle_t g_sensorQueue;
 
 
 /**
- * @brief Core0用タスク（センサ値取得を担当する）
+ * @brief 指示速度取得(ROSコールバック)
+ * 
+ */
+void cmd_vel_callback(const void* msgin)
+{
+    const geometry_msgs__msg__Twist* msg = (const geometry_msgs__msg__Twist *)msgin;
+
+    Serial.print(msg->linear.x); Serial.print(" ");
+    Serial.print(msg->angular.z); Serial.println(" ");
+}
+
+
+/**
+ * @brief センサー用タスク（センサ値取得を担当する）
  * 
  * @param args 
  */
-void main_core0(void *args)
+void sensor_loop(void *args)
 {    
     // I2Cの初期化
     Wire.begin();
     Wire.setClock(400000);
     
     // エンコーダ初期化
-    if(!g_encoder.begin(&Wire, 0x36))
-    {
-        while(1)
-        {
-            log_erro("encoder initialize error");
-            delay(500);
-        }
-    }    
+    RUNTIME_CHECK(g_encoder.begin(&Wire, 0x36),
+        "encoder initialize error");
 
     // IMU初期化
-    if(!g_imu.begin(&Wire, 0x19, 0x69, 0x13)){
-        while(1)
-        {
-            log_erro("imu initialize error");
-            delay(500);
-        }
-    }
+    RUNTIME_CHECK(g_imu.begin(&Wire, 0x19, 0x69, 0x13),
+        "mu initialize error");
 
     // // センサ取得割り込み登録
     // g_timerSemaphore = xSemaphoreCreateBinary();
@@ -160,8 +184,8 @@ void setup()
     // // センサ取得キューの登録
     // g_sensorQueue = xQueueCreate(3, sizeof(SensorDataPack));
 
-    // Core0のタスク登録    
-    xTaskCreatePinnedToCore(main_core0, "main_core0", 4096, NULL, 3, &thp[0], 0);
+    // センサ用ループのタスク登録    
+    xTaskCreatePinnedToCore(sensor_loop, "sensor_loop", 4096, NULL, 3, &thp[0], 1);
 
     // PS4コントローラの初期化
     esp_read_mac(gEspMAC, ESP_MAC_BT);
@@ -174,6 +198,38 @@ void setup()
     drive.setAchRange(500, 2400, 1450);
     drive.setBchRange(500, 2400, 1450);
     drive.begin();
+
+    // ROS初期化
+    Serial2.begin(115200);
+    set_microros_serial_transports(Serial2);
+    delay(2000);
+
+    allocator = rcl_get_default_allocator();    
+    RCL_CHECK(rclc_support_init(&support, 0, NULL, &allocator),
+        "rcl support initialize error");
+    RCL_CHECK(rclc_node_init_default(&node, "micro_ros_platformio_node", "", &support),
+        "rcl node initialize error");
+    // rcl_node_options_t node_ops = rcl_node_get_default_options();
+    // node_ops.domain_id = 1;
+    // rclc_node_init_with_options(&node, "jetbot_pico", "", &support, &node_ops);
+
+    RCL_CHECK(rclc_subscription_init_default(
+        &cmd_vel_sub,
+        &node,
+        ROSIDL_GET_MSG_TYPE_SUPPORT(geometry_msgs, msg, Twist),
+        "/cmd_vel"), 
+        "cmd_vel subscribe initialize error");
+
+    // RCL_CHECK(rclc_executor_init(&executor, &support.context, 1, & allocator),
+    //     "rcl executor initialize error");
+
+    // RCL_CHECK(rclc_executor_add_subscription(
+    //     &executor,
+    //     &cmd_vel_sub,
+    //     &cmd_vel_msg,
+    //     &cmd_vel_callback,
+    //     ON_NEW_DATA),
+    //     "regist subscribe error");
 }
 
 
@@ -245,5 +301,6 @@ void loop()
         break;
     }
 
-    delay(10);
+    RCL_SOFT_CHECK(rclc_executor_spin_some(&executor, RCL_MS_TO_NS(30)),
+        "rcl spin loop warn")
 }
