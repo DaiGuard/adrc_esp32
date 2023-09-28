@@ -4,6 +4,7 @@
 #include <rcl/rcl.h>
 #include <rclc/rclc.h>
 #include <rclc/executor.h>
+#include <std_msgs/msg/int32.h>
 #include <geometry_msgs/msg/twist.h>
 
 #if !defined(MICRO_ROS_TRANSPORT_ARDUINO_SERIAL)
@@ -29,7 +30,9 @@ rclc_support_t support;
 rcl_allocator_t allocator;
 rcl_node_t node;
 rcl_timer_t timer;
+rcl_publisher_t status_pub;
 rcl_subscription_t cmd_vel_sub;
+std_msgs__msg__Int32 status_msg;
 geometry_msgs__msg__Twist cmd_vel_msg;
 
 
@@ -37,14 +40,19 @@ geometry_msgs__msg__Twist cmd_vel_msg;
 enum MachineState {
     MAINMASK = 0xf0,
     SUBMASK  = 0x0f,
+    
+    /**
+     * @brief ROSとの接続完了を確認中
+     *  - ROSエージェントの接続
+     */
+    DISCONNECT = 0x00,
 
     /**
-     * @brief 各機器の接続完了を確認中
-     *  - ROSエージェントの接続
+     * @brief 各機器の接続完了を確認中     
      *  - PS4コントローラの接続
      *  - IMU, Encoder, ToF, モータドライバの初期化
      */
-    IDLE = 0x00,
+    IDLE = 0x01,
 
     /**
      * @brief 手動動作モード
@@ -64,18 +72,12 @@ enum MachineState {
 };
 
 
-struct SensorDataPack
-{
-    float vel;
-};
-
-
 /**
  * @brief グローバル変数
  * 
  */
 // 現状状態
-MachineState g_currentState = MachineState::IDLE;
+MachineState g_currentState = MachineState::DISCONNECT;
 // Bluetooth MACアドレス
 uint8_t gEspMAC[6];
 // エンコーダクラス
@@ -90,7 +92,8 @@ Driver_DRV8835 drive(33, 25, 26, 27);
 // volatile SemaphoreHandle_t g_timerSemaphore;
 // portMUX_TYPE g_timerMux = portMUX_INITIALIZER_UNLOCKED;
 // スレッド間キュー
-QueueHandle_t g_sensorQueue;
+// QueueHandle_t g_sensorQueue;
+float target_vel[2] = {0.0f, 0.0f};
 
 
 /**
@@ -115,8 +118,8 @@ void cmd_vel_callback(const void* msgin)
 {
     const geometry_msgs__msg__Twist* msg = (const geometry_msgs__msg__Twist *)msgin;
 
-    Serial.print(msg->linear.x); Serial.print(" ");
-    Serial.print(msg->angular.z); Serial.println(" ");
+    target_vel[0] = msg->linear.x;
+    target_vel[1] = msg->angular.z;
 }
 
 
@@ -213,6 +216,13 @@ void setup()
     // node_ops.domain_id = 1;
     // rclc_node_init_with_options(&node, "jetbot_pico", "", &support, &node_ops);
 
+    RCL_CHECK(rclc_publisher_init_default(
+        &status_pub,
+        &node,
+        ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
+        "status_esp"),
+        "status_esp publish initialize error");
+
     RCL_CHECK(rclc_subscription_init_default(
         &cmd_vel_sub,
         &node,
@@ -220,16 +230,16 @@ void setup()
         "/cmd_vel"), 
         "cmd_vel subscribe initialize error");
 
-    // RCL_CHECK(rclc_executor_init(&executor, &support.context, 1, & allocator),
-    //     "rcl executor initialize error");
+    RCL_CHECK(rclc_executor_init(&executor, &support.context, 1, & allocator),
+        "rcl executor initialize error");
 
-    // RCL_CHECK(rclc_executor_add_subscription(
-    //     &executor,
-    //     &cmd_vel_sub,
-    //     &cmd_vel_msg,
-    //     &cmd_vel_callback,
-    //     ON_NEW_DATA),
-    //     "regist subscribe error");
+    RCL_CHECK(rclc_executor_add_subscription(
+        &executor,
+        &cmd_vel_sub,
+        &cmd_vel_msg,
+        &cmd_vel_callback,
+        ON_NEW_DATA),
+        "regist subscribe error");
 }
 
 
@@ -259,12 +269,15 @@ void loop()
 
     // 接続機器の確認
     bool is_all_connected = true;
-    float vel[2];
+    bool switch_mode = false;
+    float vel[2];    
     if(PS4.isConnected()){
         is_all_connected &= true;
 
         vel[0] = PS4.LStickY() / 127.0;
         vel[1] = PS4.LStickX() / 127.0;
+
+        switch_mode = PS4.Triangle();
     }
     else{
         is_all_connected &= false;
@@ -273,11 +286,19 @@ void loop()
     // 状態毎の処理
     switch(g_currentState & MachineState::MAINMASK)
     {
+        case MachineState::DISCONNECT:
+        break;
         case MachineState::IDLE:
+            drive.setAvalue(0.0f);
+            drive.setBvalue(0.0f);
         break;
         case MachineState::MANUAL:
+            drive.setAvalue(vel[0]);
+            drive.setBvalue(-vel[1]);
         break;
         case MachineState::AUTO:
+            drive.setAvalue(target_vel[0]);
+            drive.setBvalue(target_vel[1]);
         break;
         default:
             log_erro("unknown current state (%x)", g_currentState);
@@ -287,19 +308,37 @@ void loop()
     // 状態の更新
     switch(g_currentState & MachineState::MAINMASK)
     {
+        case MachineState::DISCONNECT:
+        break;
         case MachineState::IDLE:
             if(is_all_connected)
             {
                 g_currentState = MachineState::MANUAL;
+                PS4.setLed(0, 0, 255);
+                PS4.sendToController();
             }
         break;
         case MachineState::MANUAL:
-            drive.setAvalue(vel[0]);
-            drive.setBvalue(-vel[1]);
+            if(switch_mode)
+            {
+                g_currentState = MachineState::AUTO;
+                PS4.setLed(0, 255, 0);
+                PS4.sendToController();
+            }
         break;
         case MachineState::AUTO:
+            if(!switch_mode)
+            {
+                g_currentState = MachineState::MANUAL;
+                PS4.setLed(0, 0, 255);
+                PS4.sendToController();
+            }
         break;
     }
+
+    status_msg.data = g_currentState;
+    RCL_SOFT_CHECK(rcl_publish(&status_pub, &status_msg, NULL),
+        "status pub warn");
 
     RCL_SOFT_CHECK(rclc_executor_spin_some(&executor, RCL_MS_TO_NS(30)),
         "rcl spin loop warn")
