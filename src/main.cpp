@@ -42,17 +42,11 @@ enum MachineState {
     SUBMASK  = 0x0f,
     
     /**
-     * @brief ROSとの接続完了を確認中
-     *  - ROSエージェントの接続
-     */
-    DISCONNECT = 0x00,
-
-    /**
      * @brief 各機器の接続完了を確認中     
      *  - PS4コントローラの接続
      *  - IMU, Encoder, ToF, モータドライバの初期化
      */
-    IDLE = 0x01,
+    IDLE = 0x00,
 
     /**
      * @brief 手動動作モード
@@ -77,7 +71,7 @@ enum MachineState {
  * 
  */
 // 現状状態
-MachineState g_currentState = MachineState::DISCONNECT;
+MachineState g_currentState = MachineState::IDLE;
 // Bluetooth MACアドレス
 uint8_t gEspMAC[6];
 // エンコーダクラス
@@ -175,6 +169,8 @@ void sensor_loop(void *args)
 
         // 速度計算
         vel = g_encoder.pulse2vel(pulse_interval, dt);
+
+        delay(5);
     }
 }
 
@@ -190,16 +186,9 @@ void setup()
     // センサ用ループのタスク登録    
     xTaskCreatePinnedToCore(sensor_loop, "sensor_loop", 4096, NULL, 3, &thp[0], 1);
 
-    // PS4コントローラの初期化
-    esp_read_mac(gEspMAC, ESP_MAC_BT);
-    char bt_str[18];
-    sprintf(bt_str, "%02x:%02x:%02x:%02x:%02x:%02x",
-        gEspMAC[0], gEspMAC[1], gEspMAC[2], gEspMAC[3], gEspMAC[4], gEspMAC[5]);
-    PS4.begin(bt_str);
-
     // モータドライバ初期化
     drive.setAchRange(500, 2400, 1450);
-    drive.setBchRange(500, 2400, 1450);
+    drive.setBchRange(700, 2700, 1650);
     drive.begin();
 
     // ROS初期化
@@ -240,6 +229,13 @@ void setup()
         &cmd_vel_callback,
         ON_NEW_DATA),
         "regist subscribe error");
+
+    // PS4コントローラの初期化
+    esp_read_mac(gEspMAC, ESP_MAC_BT);
+    char bt_str[18];
+    sprintf(bt_str, "%02x:%02x:%02x:%02x:%02x:%02x",
+        gEspMAC[0], gEspMAC[1], gEspMAC[2], gEspMAC[3], gEspMAC[4], gEspMAC[5]);
+    PS4.begin(bt_str);
 }
 
 
@@ -286,8 +282,6 @@ void loop()
     // 状態毎の処理
     switch(g_currentState & MachineState::MAINMASK)
     {
-        case MachineState::DISCONNECT:
-        break;
         case MachineState::IDLE:
             drive.setAvalue(0.0f);
             drive.setBvalue(0.0f);
@@ -308,8 +302,6 @@ void loop()
     // 状態の更新
     switch(g_currentState & MachineState::MAINMASK)
     {
-        case MachineState::DISCONNECT:
-        break;
         case MachineState::IDLE:
             if(is_all_connected)
             {
@@ -340,6 +332,6 @@ void loop()
     RCL_SOFT_CHECK(rcl_publish(&status_pub, &status_msg, NULL),
         "status pub warn");
 
-    RCL_SOFT_CHECK(rclc_executor_spin_some(&executor, RCL_MS_TO_NS(30)),
+    RCL_SOFT_CHECK(rclc_executor_spin_some(&executor, RCL_MS_TO_NS(1)),
         "rcl spin loop warn")
 }
