@@ -4,6 +4,8 @@
 
 #include "Encoder_AS5600.h"
 #include "Imu_BMX055.h"
+#include "Driver_DRV8835.h"
+
 
 // x, y, th, x', y', th'
 float x[6] = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
@@ -21,8 +23,16 @@ RobotLocalization::EKF ekf(
   R // R
 );
 
+// エンコーダクラス
 Encoder_AS5600 g_encoder(0.0638*M_PI/45056);
+// IMUクラス
 Imu_BMX055 g_imu;
+// モータドライバクラス
+Driver_DRV8835 g_drive(33, 25, 26, 27);
+
+// 目標速度
+float target_vel[2] = {0.0f, 0.0f};
+float current_vel[2] = {0.0f, 0.0f};
 
 TaskHandle_t calcHandle;
 
@@ -33,8 +43,14 @@ void calc(void* arg)
     Wire.begin();
     Wire.setClock(400000);
 
+    // エンコーダ初期化
     g_encoder.begin(&Wire, 0x36);
+    // IMU初期化
     g_imu.begin(&Wire, 0x19, 0x69, 0x13);
+    // モータドライバ初期化
+    g_drive.setAchRange(500, 2400, 1450);
+    g_drive.setBchRange(700, 2700, 1650);
+    g_drive.begin();
 
     int64_t pulse_interval;
     float vel;
@@ -71,25 +87,59 @@ void calc(void* arg)
         memcpy(x, x_new, sizeof(float)*6);
         ekf.update(x, y, dt, x_new);
 
-        Serial.print(x_new[0]); Serial.print(", ");
-        Serial.print(x_new[1]); Serial.print(", ");
-        Serial.print(x_new[2]); Serial.print(", ");
-        Serial.println();
+        current_vel[0] = vel;
+        current_vel[1] = x_new[5];
 
-        delay(5);
+        // モータ制御        
+        g_drive.setAvalue(target_vel[0]);
+        g_drive.setBvalue(target_vel[1]);
+
+        delay(1);
     }
 }
 
 
 void setup()
 {
+    // シリアルデバック用設定
     Serial.begin(115200);
 
+    // センサ用ループのタスク登録    
     xTaskCreateUniversal(calc, "calc", 8192, NULL, 3, &calcHandle, APP_CPU_NUM);
 }
 
 
 void loop()
-{
+{   
+    uint32_t keys = 0x00000000;
+    while(Serial.available() > 0){
+        uint8_t key = Serial.read();        
+        keys = (keys << 8) | key;
+
+        switch(keys){
+            case 0x1b5b41:
+                target_vel[0] += 0.01;
+                break;
+            case 0x1b5b42:
+                target_vel[0] -= 0.01;
+                break;
+            case 0x1b5b43:
+                target_vel[1] += 0.01;
+                break;
+            case 0x1b5b44:
+                target_vel[1] -= 0.01;
+                break;
+        }        
+    }
+
+    // target_vel[0] = max: 0.07, min: -0.06
+    // target_vel[1] = max: 0.5, min: -0.5
+
+    Serial.print(target_vel[0]); Serial.print(" ");
+    Serial.print(target_vel[1]); Serial.print(" ");
+    Serial.print(current_vel[0]); Serial.print(" ");
+    Serial.print(current_vel[1]); Serial.print(" ");
+    Serial.println();
+
     delay(100);
 }
