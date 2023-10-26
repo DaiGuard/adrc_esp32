@@ -8,6 +8,7 @@
 #include <rclc/executor.h>
 
 #include <HardwareSerial.h>
+#include <IPAddress.h>
 
 
 class RosManagerBase
@@ -15,7 +16,11 @@ class RosManagerBase
     public:
         RosManagerBase();
 
+        #if defined(MICRO_ROS_TRANSPORT_ARDUINO_SERIAL)
         void begin(HardwareSerial& serial);
+        #elif defined(MICRO_ROS_TRANSPORT_ARDUINO_WIFI)
+        void begin(const char* ssid, const char* psk, IPAddress& ip, size_t port);
+        #endif
 
         bool init_node(const char* node_name, const char* name_space);
         bool fini_node();
@@ -36,25 +41,5 @@ class RosManagerBase
         bool init_comp;
 };
 
-
-#include <rcl/publisher.h>
-#include <std_msgs/msg/int32.h>
-
-class RosManager: public RosManagerBase
-{
-    public:
-        RosManager(): RosManagerBase(){}
-
-        void begin(HardwareSerial& serial){ RosManagerBase::begin(serial); }
-
-        bool init_node(const char* node_name, const char* name_space);
-        bool fini_node();
-
-        bool publish_state();
-
-    private:
-        rcl_publisher_t status_pub;        
-        std_msgs__msg__Int32 status_msg;
-};
 
 #endif

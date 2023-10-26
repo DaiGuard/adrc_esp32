@@ -32,24 +32,13 @@ const int32_t   AS5600_RESOLUTION_PPR_1_4 = AS5600_RESOLUTION_PPR / 4;
 const int32_t   AS5600_RESOLUTION_PPR_3_4 = AS5600_RESOLUTION_PPR_1_4 * 3;
 
 
-Encoder_AS5600::Encoder_AS5600(float ratio)
-{
-    _wire           = NULL;
-    _address        = 0x00;
-    _pulse_count    = 0;
-    _ratio          = ratio;
-}
-
-Encoder_AS5600::~Encoder_AS5600()
-{
-
-}
-
-
-bool Encoder_AS5600::begin(TwoWire* wire, uint8_t address)
+bool Encoder_AS5600::begin(TwoWire* wire, float ratio, uint8_t address)
 {
     _wire       = wire;
     _address    = address;
+
+    _pulse_count    = 0;
+    _ratio          = ratio;
 
     return true;
 }
@@ -156,3 +145,6 @@ int64_t Encoder_AS5600::readPulseCount()
 
     return _pulse_count;
 }
+
+
+Encoder_AS5600 Encoder;

@@ -1,10 +1,9 @@
 #include <Arduino.h>
 
-#include "RosManager.h"
+#include "CustomRosManager.h"
 
 
-RosManager ros_manager;
-
+CustomRosManager ros_manager;
 
 // #include <micro_ros_platformio.h>
 // #include <rcl/rcl.h>
@@ -138,6 +137,7 @@ void setup()
     // ROS初期化
     Serial2.begin(115200);
     ros_manager.begin(Serial2);
+    // ros_manager.begin(ssid, psk, ip, port);
 
     // set_microros_serial_transports(Serial2);
     // delay(2000);
@@ -193,6 +193,7 @@ void loop()
             return;
         }
     }
+
     // if(!ros::init_complate) {
     //     if(ros::init_node("adrc_eps32", "")){
     //         Serial.println("initialize comp");            
@@ -222,4 +223,5 @@ void loop()
 
     // RCL_SOFT_CHECK(rclc_executor_spin_some(&executor, RCL_MS_TO_NS(1)),
     //     "rcl spin loop warn")    
+    delay(100);
 }

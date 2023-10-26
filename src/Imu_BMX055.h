@@ -10,8 +10,8 @@ class TwoWire;
 class Imu_BMX055
 {
     public:
-        Imu_BMX055();
-        ~Imu_BMX055();
+        Imu_BMX055(){}
+        ~Imu_BMX055(){}
 
         bool begin(TwoWire* wire, 
             uint8_t acc_address=0x19,
@@ -29,5 +29,7 @@ class Imu_BMX055
         uint8_t     _mag_address;
 };
 
+
+extern Imu_BMX055 Imu;
 
 #endif

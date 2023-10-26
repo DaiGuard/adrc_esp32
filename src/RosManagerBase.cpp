@@ -1,15 +1,9 @@
-#include "RosManager.h"
+#include "RosManagerBase.h"
 
 #include <micro_ros_platformio.h>
 #include <rcl/rcl.h>
 #include <rclc/rclc.h>
 #include <rclc/executor.h>
-#include <std_msgs/msg/int32.h>
-#include <geometry_msgs/msg/twist.h>
-
-#if !defined(MICRO_ROS_TRANSPORT_ARDUINO_SERIAL)
-#error This example is only avaliable for Arduino framework with serial transport.
-#endif
 
 
 RosManagerBase::RosManagerBase()
@@ -18,12 +12,22 @@ RosManagerBase::RosManagerBase()
 }
 
 
-void RosManagerBase::begin(HardwareSerial& serial)
+#if defined(MICRO_ROS_TRANSPORT_ARDUINO_SERIAL)
+bool RosManagerBase::begin(HardwareSerial& serial)
 {
-    set_microros_serial_transports(serial);
+    set_microros_serial_transports(serial);    
     delay(2000);
-}
 
+    return true;
+}
+#elif defined(MICRO_ROS_TRANSPORT_ARDUINO_WIFI)
+bool RosManagerBase::begin(const char* ssid, const char* psk, IPAddress& ip, size_t port)
+{
+    set_microros_wifi_transports((char*)ssid, (char*)psk, ip, port);
+
+    return true;
+}
+#endif
 
 bool RosManagerBase::init_node(const char* node_name, const char* name_space)
 {
@@ -69,52 +73,6 @@ bool RosManagerBase::spin_once(uint32_t msec)
 {   
     rcl_ret_t ret;
     ret = rclc_executor_spin_some(&executor, RCL_MS_TO_NS(msec));
-    if(ret != RCL_RET_OK){
-        return false;
-    }
-
-    return true;
-}
-
-
-bool RosManager::init_node(const char* node_name, const char* name_space)
-{
-    if(!RosManagerBase::init_node(node_name, name_space))
-    {
-        return false;
-    }
-
-    // ユーザーの処理を書く
-    rcl_ret_t ret;
-    ret = rclc_publisher_init_default(
-        &status_pub,
-        &node,
-        ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
-        "status_esp");
-    //
-
-    return true;
-}
-
-bool RosManager::fini_node()
-{
-    // ユーザーの処理を書く
-    rcl_ret_t ret;
-    ret = rcl_publisher_fini(&status_pub, &node);
-    //    
-
-    RosManagerBase::fini_node();
-
-    return true;
-}
-
-
-bool RosManager::publish_state()
-{
-    rcl_ret_t ret;
-
-    status_msg.data++;
-    ret = rcl_publish(&status_pub, &status_msg, NULL);
     if(ret != RCL_RET_OK){
         return false;
     }

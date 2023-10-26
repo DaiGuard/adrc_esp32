@@ -3,20 +3,6 @@
 #include <Wire.h>
 
 
-Imu_BMX055::Imu_BMX055()
-{
-    _wire = NULL;
-    _acc_address = 0x00;
-    _gyro_address = 0x00;
-    _mag_address = 0x00;
-}
-
-
-Imu_BMX055::~Imu_BMX055()
-{
-
-}
-
 
 bool Imu_BMX055::begin(TwoWire* wire, 
             uint8_t acc_address, uint8_t gyro_address, uint8_t mag_address)
@@ -202,3 +188,5 @@ bool Imu_BMX055::readMag(float* mag)
     return false;
 }
 
+
+Imu_BMX055 Imu;
