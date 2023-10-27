@@ -29,13 +29,27 @@ bool RosManagerBase::begin(const char* ssid, const char* psk, IPAddress& ip, siz
 }
 #endif
 
-bool RosManagerBase::init_node(const char* node_name, const char* name_space)
+bool RosManagerBase::init_node(const char* node_name, const char* name_space, int domain_id)
 {
     rcl_ret_t ret;
 
     allocator = rcl_get_default_allocator();
+
+    options = rcl_get_zero_initialized_init_options();
+    ret = rcl_init_options_init(&options, allocator);
+    if(ret != RCL_RET_OK) {
+        return false;
+    }
+    ret = rcl_init_options_set_domain_id(&options, domain_id);
+    if(ret != RCL_RET_OK) {
+        return false;
+    }
     
-    ret = rclc_support_init(&support, 0, NULL, &allocator);
+    // ret = rclc_support_init(&support, 0, NULL, &allocator);
+    // if(ret != RCL_RET_OK) {
+    //     return false;
+    // }        
+    ret = rclc_support_init_with_options(&support, 0, NULL, &options, &allocator);
     if(ret != RCL_RET_OK) {
         return false;
     }        
@@ -62,6 +76,7 @@ bool RosManagerBase::fini_node()
     ret = rcl_node_fini(&node);
     ret = rclc_executor_fini(&executor);
     ret = rclc_support_fini(&support);
+    ret = rcl_init_options_fini(&options);
 
     init_comp = false;
 

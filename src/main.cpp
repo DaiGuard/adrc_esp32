@@ -223,10 +223,17 @@ void loop()
 
     Ros.status_msg.data = g_currentState;
     Ros.cur_vel_msg.linear.x = target_vel[0];
-    Ros.cur_vel_msg.angular.z = target_vel[1];
+    Ros.cur_vel_msg.angular.z = target_vel[1];         
+    Ros.pose_msg.pose.position.x = x[0];
+    Ros.pose_msg.pose.position.y = x[1];
+    Ros.pose_msg.pose.position.z = 0.0;
+    Ros.pose_msg.pose.orientation.x = 0.0;
+    Ros.pose_msg.pose.orientation.y = 0.0;
+    Ros.pose_msg.pose.orientation.z = sin(x[2]/2.0);
+    Ros.pose_msg.pose.orientation.w = cos(x[2]/2.0);
 
     if(!Ros.is_initialized()){
-        if(Ros.init_node("adrc_esp32", "")){
+        if(Ros.init_node("adrc_esp32", "", 1)){
             is_all_connected &= true;
         }
         else{

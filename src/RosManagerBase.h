@@ -22,7 +22,7 @@ class RosManagerBase
         bool begin(const char* ssid, const char* psk, IPAddress& ip, size_t port);
         #endif
 
-        bool init_node(const char* node_name, const char* name_space);
+        bool init_node(const char* node_name, const char* name_space, int domain_id=0);
         bool fini_node();
 
         bool is_initialized(){ return init_comp; }
@@ -35,6 +35,7 @@ class RosManagerBase
         rclc_support_t support;
         rcl_allocator_t allocator;
         rcl_node_t node;
+        rcl_init_options_t options;
         rcl_timer_t timer;
 
         // 状態変数
