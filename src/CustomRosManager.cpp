@@ -95,9 +95,11 @@ bool CustomRosManager::fini_node()
     rcl_ret_t ret;
     ret = rclc_executor_remove_subscription(&executor, &cmd_vel_sub);
     ret = rcl_subscription_fini(&cmd_vel_sub, &node);
+    ret = rclc_executor_remove_service(&executor, &reset_srv);
+    ret = rcl_service_fini(&reset_srv, &node);
     ret = rcl_publisher_fini(&status_pub, &node);
     ret = rcl_publisher_fini(&pose_pub, &node);
-    ret = rcl_publisher_fini(&cur_vel_pub, &node);
+    ret = rcl_publisher_fini(&cur_vel_pub, &node);    
     //
 
     RosManagerBase::fini_node();
