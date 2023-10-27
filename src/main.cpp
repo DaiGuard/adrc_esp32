@@ -211,8 +211,9 @@ void loop()
     if(PS4.isConnected()){
         is_all_connected &= true;
 
-        vel[0] = PS4.LStickY() / 127.0;
-        vel[1] = PS4.LStickX() / 127.0;
+        vel[0] = PS4.LStickY() / 127.0 * 0.08;
+        vel[1] = PS4.RStickX() / 127.0 * 0.5;
+        
 
         switch_mode = PS4.Triangle();
     }
@@ -221,6 +222,8 @@ void loop()
     }
 
     Ros.status_msg.data = g_currentState;
+    Ros.cur_vel_msg.linear.x = target_vel[0];
+    Ros.cur_vel_msg.angular.z = target_vel[1];
 
     if(!Ros.is_initialized()){
         if(Ros.init_node("adrc_esp32", "")){

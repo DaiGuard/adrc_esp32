@@ -35,6 +35,15 @@ bool CustomRosManager::init_node(const char* node_name, const char* name_space)
         return false;
     }
 
+    ret = rclc_publisher_init_default(
+        &cur_vel_pub,
+        &node,
+        ROSIDL_GET_MSG_TYPE_SUPPORT(geometry_msgs, msg, Twist),
+        "cur_vel");
+    if(ret != RCL_RET_OK){
+        return false;
+    }
+
     ret = rclc_subscription_init_default(
         &cmd_vel_sub, &node,
         ROSIDL_GET_MSG_TYPE_SUPPORT(geometry_msgs, msg, Twist),
@@ -64,7 +73,8 @@ bool CustomRosManager::fini_node()
     ret = rclc_executor_remove_subscription(&executor, &cmd_vel_sub);
     ret = rcl_subscription_fini(&cmd_vel_sub, &node);
     ret = rcl_publisher_fini(&status_pub, &node);
-    ret = rcl_publisher_fini(&pose_pub, &node);    
+    ret = rcl_publisher_fini(&pose_pub, &node);
+    ret = rcl_publisher_fini(&cur_vel_pub, &node);
     //
 
     RosManagerBase::fini_node();
@@ -78,6 +88,11 @@ bool CustomRosManager::publish_all()
     rcl_ret_t ret;
     
     ret = rcl_publish(&status_pub, &status_msg, NULL);
+    if(ret != RCL_RET_OK){
+        return false;
+    }
+
+    ret = rcl_publish(&cur_vel_pub, &cur_vel_msg, NULL);
     if(ret != RCL_RET_OK){
         return false;
     }

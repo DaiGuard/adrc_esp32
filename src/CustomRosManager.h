@@ -22,10 +22,12 @@ class CustomRosManager: public RosManagerBase
         std_msgs__msg__Int32 status_msg;
         geometry_msgs__msg__PoseStamped pose_msg;
         geometry_msgs__msg__Twist cmd_vel_msg;
+        geometry_msgs__msg__Twist cur_vel_msg;
 
     private:
         rcl_publisher_t status_pub;
         rcl_publisher_t pose_pub;
+        rcl_publisher_t cur_vel_pub;
         rcl_subscription_t cmd_vel_sub;
 
         static void cb_cmd_vel(const void* msgin);
