@@ -152,6 +152,9 @@ void sensor_loop(void *args)
         current_vel[0] = vel;
         current_vel[1] = x_new[5];
 
+        log_debug("[ekf] pose=(%f, %f, %f)", 
+            x_new[0], x_new[1], x_new[2]);
+
         // モータ制御        
         Driver.setAvalue(target_vel[0]);
         Driver.setBvalue(target_vel[1]);
@@ -290,6 +293,8 @@ void loop()
         case MachineState::IDLE:
             if(is_all_connected)
             {
+                log_info("[main] state switch MANUAL");
+
                 g_currentState = MachineState::MANUAL;
                 PS4.setLed(0, 0, 255);
                 PS4.sendToController();
@@ -298,12 +303,16 @@ void loop()
         case MachineState::MANUAL:
             if(!is_all_connected)
             {
+                log_info("[main] state switch IDLE");
+
                 g_currentState = MachineState::IDLE;
                 PS4.setLed(255, 0, 0);
                 PS4.sendToController();
             }
             else if(switch_mode)
             {
+                log_info("[main] state switch AUTO");
+
                 g_currentState = MachineState::AUTO;
                 PS4.setLed(0, 255, 0);
                 PS4.sendToController();
@@ -312,18 +321,24 @@ void loop()
         case MachineState::AUTO:
             if(!is_all_connected)
             {
+                log_info("[main] state switch IDLE");
+
                 g_currentState = MachineState::IDLE;
                 PS4.setLed(255, 0, 0);
                 PS4.sendToController();
             }
             else if(!switch_mode)
             {
+                log_info("[main] state switch MANUAL");
+
                 g_currentState = MachineState::MANUAL;
                 PS4.setLed(0, 0, 255);
                 PS4.sendToController();
             }
         break;
     }
+
+    log_debug("[main] current state = %d", g_currentState);
     
     // delay(30);
 }

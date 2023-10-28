@@ -6,9 +6,13 @@
 #include <rclc/executor.h>
 #include <rosidl_runtime_c/string_functions.h>
 
+#include "Logging.h"
+
 
 bool CustomRosManager::init_node(const char* node_name, const char* name_space, int domain_id)
 {
+    log_info("[ros] start to initialize node");
+
     if(!RosManagerBase::init_node(node_name, name_space, 2, domain_id))
     {
         return false;
@@ -101,11 +105,15 @@ bool CustomRosManager::init_node(const char* node_name, const char* name_space, 
     rosidl_runtime_c__String__assign(&Ros.pose_msg.header.frame_id, "map");
     //
 
+    log_info("[ros] end to initialize node");
+
     return true;
 }
 
 bool CustomRosManager::fini_node()
 {
+    log_info("[ros] start to fini node");
+
     // ユーザーの処理を書く
     rcl_ret_t ret;
     ret = rclc_executor_remove_subscription(&executor, &cmd_vel_sub);
@@ -120,6 +128,8 @@ bool CustomRosManager::fini_node()
     //
 
     RosManagerBase::fini_node();
+
+    log_info("[ros] end to fini node");
 
     return true;
 }
@@ -154,6 +164,9 @@ CustomRosManager Ros;
 
 void CustomRosManager::cb_cmd_vel(const void* msgin)
 {
+    log_debug("[ros] cmd_vel=(%f, %f)", 
+        msg->linear.x, msg->angular.z);
+
     const geometry_msgs__msg__Twist* msg = (const geometry_msgs__msg__Twist *)msgin;
 
     Ros.cmd_vel_msg.linear.x = msg->linear.x;
@@ -162,8 +175,6 @@ void CustomRosManager::cb_cmd_vel(const void* msgin)
     Ros.cmd_vel_msg.angular.x = msg->angular.x;
     Ros.cmd_vel_msg.angular.y = msg->angular.y;
     Ros.cmd_vel_msg.angular.z = msg->angular.z;
-
-    Serial.println("CMD_VEL");
 }
 
 
@@ -176,10 +187,11 @@ void CustomRosManager::cb_cmd_vel(const void* msgin)
 
 void CustomRosManager::cb_reset(const void* request, void* response)
 {
+    log_info("[ros] service request reset");
+
     const std_srvs__srv__Trigger_Request* req = (const std_srvs__srv__Trigger_Request*)request;
     std_srvs__srv__Trigger_Response* res = (std_srvs__srv__Trigger_Response*)response;
-
-    Serial.println("RESET");
+    
     Ros.reset_response_msg.success = true;
 
     res->success = true;
