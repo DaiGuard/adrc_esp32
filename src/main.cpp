@@ -215,13 +215,12 @@ void loop()
     // 接続機器の確認
     bool is_all_connected = true;
     bool switch_mode = false;
-    float vel[2];    
+    float vel[2], auto_vel[2];
     if(PS4.isConnected()){
         is_all_connected &= true;
 
         vel[0] = PS4.LStickY() / 127.0 * 0.12;
         vel[1] = PS4.RStickX() / 127.0 * 0.5;
-        
 
         switch_mode = PS4.Triangle();
     }
@@ -239,6 +238,8 @@ void loop()
     Ros.pose_msg.pose.orientation.y = 0.0;
     Ros.pose_msg.pose.orientation.z = sin(x[2]/2.0);
     Ros.pose_msg.pose.orientation.w = cos(x[2]/2.0);
+    auto_vel[0] = Ros.cmd_vel_msg.linear.x;
+    auto_vel[1] = Ros.cmd_vel_msg.angular.z;
     if(Ros.reset_response_msg.success){        
         memset(x_new, 0, 6 * sizeof(float));
         Ros.reset_response_msg.success = false;
@@ -284,8 +285,8 @@ void loop()
             target_vel[1] = -vel[1];
         break;
         case MachineState::AUTO:
-            // target_vel[0] =  vel[0];
-            // target_vel[1] = -vel[1];
+            target_vel[0] =  auto_vel[0];
+            target_vel[1] = -auto_vel[1];
         break;
         default:
             log_erro("unknown current state (%x)", g_currentState);
