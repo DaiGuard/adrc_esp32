@@ -286,7 +286,7 @@ void loop()
         break;
         case MachineState::AUTO:
             target_vel[0] =  auto_vel[0];
-            target_vel[1] = -auto_vel[1];
+            target_vel[1] =  auto_vel[1];
         break;
         default:
             log_erro("unknown current state (%x)", g_currentState);
