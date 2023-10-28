@@ -29,7 +29,7 @@ bool RosManagerBase::begin(const char* ssid, const char* psk, IPAddress& ip, siz
 }
 #endif
 
-bool RosManagerBase::init_node(const char* node_name, const char* name_space, int domain_id)
+bool RosManagerBase::init_node(const char* node_name, const char* name_space, int handnum, int domain_id)
 {
     rcl_ret_t ret;
 
@@ -59,7 +59,7 @@ bool RosManagerBase::init_node(const char* node_name, const char* name_space, in
         return false;
     }
 
-    ret = rclc_executor_init(&executor, &support.context, 1, & allocator);
+    ret = rclc_executor_init(&executor, &support.context, handnum, & allocator);
     if(ret != RCL_RET_OK) {
         return false;
     }

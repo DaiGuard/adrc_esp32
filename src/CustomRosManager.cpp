@@ -6,12 +6,10 @@
 #include <rclc/executor.h>
 #include <rosidl_runtime_c/string_functions.h>
 
-#include <std_msgs/msg/int32.h>
-
 
 bool CustomRosManager::init_node(const char* node_name, const char* name_space, int domain_id)
 {
-    if(!RosManagerBase::init_node(node_name, name_space, domain_id))
+    if(!RosManagerBase::init_node(node_name, name_space, 2, domain_id))
     {
         return false;
     }
@@ -53,6 +51,14 @@ bool CustomRosManager::init_node(const char* node_name, const char* name_space, 
         return false;
     }
 
+    // ret = rclc_subscription_init_default(
+    //     &reset_sub, &node,
+    //     ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
+    //     "reset_esp32"
+    // );
+    // if(ret != RCL_RET_OK){
+    //     return false;
+    // }
     ret = rclc_service_init_default(
         &reset_srv, &node,
         ROSIDL_GET_SRV_TYPE_SUPPORT(std_srvs, srv, Trigger),
@@ -72,6 +78,15 @@ bool CustomRosManager::init_node(const char* node_name, const char* name_space, 
         return false;
     }
 
+    // ret = rclc_executor_add_subscription(
+    //     &executor,
+    //     &reset_sub,
+    //     &reset_msg,        
+    //     CustomRosManager::cb_reset,
+    //     ON_NEW_DATA);
+    // if(ret != RCL_RET_OK){
+    //     return false;
+    // }
     ret = rclc_executor_add_service(
         &executor,
         &reset_srv,
@@ -95,8 +110,10 @@ bool CustomRosManager::fini_node()
     rcl_ret_t ret;
     ret = rclc_executor_remove_subscription(&executor, &cmd_vel_sub);
     ret = rcl_subscription_fini(&cmd_vel_sub, &node);
+    // ret = rclc_executor_remove_subscription(&executor, &reset_sub);
+    // ret = rcl_subscription_fini(&reset_sub, &node);
     ret = rclc_executor_remove_service(&executor, &reset_srv);
-    ret = rcl_service_fini(&reset_srv, &node);
+    ret = rcl_service_fini(&reset_srv, &node);    
     ret = rcl_publisher_fini(&status_pub, &node);
     ret = rcl_publisher_fini(&pose_pub, &node);
     ret = rcl_publisher_fini(&cur_vel_pub, &node);    
@@ -150,12 +167,20 @@ void CustomRosManager::cb_cmd_vel(const void* msgin)
 }
 
 
+// void CustomRosManager::cb_reset(const void* msgin)
+// {    
+//     const std_msgs__msg__Int32* msg = (const std_msgs__msg__Int32 *)msgin;
+//     Ros.reset_msg.data = msg->data;
+// }
+
+
 void CustomRosManager::cb_reset(const void* request, void* response)
 {
     const std_srvs__srv__Trigger_Request* req = (const std_srvs__srv__Trigger_Request*)request;
     std_srvs__srv__Trigger_Response* res = (std_srvs__srv__Trigger_Response*)response;
 
     Serial.println("RESET");
+    Ros.reset_response_msg.success = true;
 
     res->success = true;
 }

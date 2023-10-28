@@ -23,17 +23,20 @@ class CustomRosManager: public RosManagerBase
         geometry_msgs__msg__PoseStamped pose_msg;
         geometry_msgs__msg__Twist cmd_vel_msg;
         geometry_msgs__msg__Twist cur_vel_msg;
+        // std_msgs__msg__Int32 reset_msg;
         std_srvs__srv__Trigger_Response reset_response_msg;
-        std_srvs__srv__Trigger_Request reset_request_msg;
+        std_srvs__srv__Trigger_Request reset_request_msg;        
 
     private:
         rcl_publisher_t status_pub;
         rcl_publisher_t pose_pub;
         rcl_publisher_t cur_vel_pub;
         rcl_subscription_t cmd_vel_sub;
+        // rcl_subscription_t reset_sub;
         rcl_service_t reset_srv;
 
         static void cb_cmd_vel(const void* msgin);
+        // static void cb_reset(const void* msgin);
         static void cb_reset(const void* request, void* response);
 };
 

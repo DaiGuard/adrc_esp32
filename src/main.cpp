@@ -231,6 +231,14 @@ void loop()
     Ros.pose_msg.pose.orientation.y = 0.0;
     Ros.pose_msg.pose.orientation.z = sin(x[2]/2.0);
     Ros.pose_msg.pose.orientation.w = cos(x[2]/2.0);
+    if(Ros.reset_response_msg.success){        
+        memset(x_new, 0, 6 * sizeof(float));
+        Ros.reset_response_msg.success = false;
+    }
+    // if(Ros.reset_msg.data > 0){
+    //     memset(x_new, 0, 6 * sizeof(float));
+    // }
+
 
     if(!Ros.is_initialized()){
         if(Ros.init_node("adrc_esp32", "", 1)){
