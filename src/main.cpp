@@ -219,7 +219,7 @@ void loop()
     if(PS4.isConnected()){
         is_all_connected &= true;
 
-        vel[0] = PS4.LStickY() / 127.0 * 0.08;
+        vel[0] = PS4.LStickY() / 127.0 * 0.12;
         vel[1] = PS4.RStickX() / 127.0 * 0.5;
         
 
