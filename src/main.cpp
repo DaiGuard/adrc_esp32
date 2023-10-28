@@ -120,6 +120,7 @@ void sensor_loop(void *args)
     uint64_t start_time, stop_time;
 
     start_time = millis();
+    // start_time = micros();
     stop_time = start_time;
 
     while(1){
@@ -133,7 +134,9 @@ void sensor_loop(void *args)
 
         // 計測時間間隔
         stop_time = millis();
+        // stop_time = micros();
         dt = (stop_time - start_time)/1000.0f;
+        // dt = (stop_time - start_time)/1000000.0f;
         start_time = stop_time;
 
         // 速度計算
@@ -160,6 +163,7 @@ void sensor_loop(void *args)
         Driver.setBvalue(target_vel[1]);
 
         delay(1);
+        // delayMicroseconds(100);
     }
 }
 
@@ -171,6 +175,7 @@ void setup()
 
     // センサ用ループのタスク登録    
     xTaskCreatePinnedToCore(sensor_loop, "sensor_loop", 8192, NULL, 3, &thp[0], APP_CPU_NUM);
+    // xTaskCreatePinnedToCore(sensor_loop, "sensor_loop", 8192, NULL, 3, &thp[0], 0);
 
     // ROS初期化
     Serial2.begin(115200);
