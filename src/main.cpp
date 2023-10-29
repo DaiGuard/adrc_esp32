@@ -11,6 +11,22 @@
 #include "Encoder_AS5600.h"
 #include "Imu_BMX055.h"
 #include "Driver_DRV8835.h"
+#include <Adafruit_VL53L1X.h>
+
+
+// Right ToF Sensor
+const uint8_t rtof_address = 0x28;
+const int rtof_shut_pin = 5;
+Adafruit_VL53L1X right_tof = Adafruit_VL53L1X(rtof_shut_pin);
+// Center ToF Sensor
+const uint8_t ctof_address = 0x27;
+const int ctof_shut_pin = 18;
+Adafruit_VL53L1X center_tof = Adafruit_VL53L1X(ctof_shut_pin);
+// Left ToF Sensor
+const uint8_t ltof_address = 0x26;
+const int ltof_shut_pin = 19;
+Adafruit_VL53L1X left_tof = Adafruit_VL53L1X(ltof_shut_pin);
+
 
 // タスクハンドラ
 TaskHandle_t thp[2];
@@ -58,6 +74,12 @@ enum MachineState {
     _AUTO_RUN   = 0x02,
     AUTO_INIT   = AUTO | _AUTO_INIT,
     AUTO_RUN    = AUTO | _AUTO_RUN,
+
+    /**
+     * @brief 緊急停止モード
+     * 　自動運転実施時に接近物が合った場合
+     */
+    STOP        = 0x40,
 };
 
 
@@ -73,19 +95,7 @@ uint8_t gEspMAC[6];
 // 目標速度
 float target_vel[2] = {0.0f, 0.0f};
 float current_vel[2] = {0.0f, 0.0f};
-
-// /**
-//  * @brief 指示速度取得(ROSコールバック)
-//  * 
-//  */
-// void cmd_vel_callback(const void* msgin)
-// {
-//     const geometry_msgs__msg__Twist* msg = (const geometry_msgs__msg__Twist *)msgin;
-
-//     target_vel[0] = msg->linear.x;
-//     target_vel[1] = msg->angular.z;
-// }
-
+int16_t current_range[3] = {0, 0, 0};
 
 /**
  * @brief センサー用タスク（センサ値取得を担当する）
@@ -97,6 +107,29 @@ void sensor_loop(void *args)
     // I2Cの初期化
     Wire.begin();
     Wire.setClock(400000);
+
+    // ToF初期化
+    right_tof.VL53L1X_Off();
+    center_tof.VL53L1X_Off();
+    left_tof.VL53L1X_Off();
+    RUNTIME_CHECK(right_tof.begin(rtof_address, &Wire),
+        "right tof initialize error");
+    RUNTIME_CHECK(center_tof.begin(ctof_address, &Wire),
+        "center tof initialize error");
+    RUNTIME_CHECK(left_tof.begin(ltof_address, &Wire),
+        "left tof initialize error");
+    RUNTIME_CHECK(right_tof.startRanging(),    
+        "right tof start error");
+    RUNTIME_CHECK(right_tof.setTimingBudget(100),
+        "right tof set budget error");
+    RUNTIME_CHECK(center_tof.startRanging(),
+        "center tof start error");
+    RUNTIME_CHECK(center_tof.setTimingBudget(100),
+        "center tof set budget error");
+    RUNTIME_CHECK(left_tof.startRanging(),
+        "left tof start error");
+    RUNTIME_CHECK(left_tof.setTimingBudget(100),
+        "left tof set budget error");
     
     // エンコーダ初期化
     RUNTIME_CHECK(Encoder.begin(&Wire, 0.0638*M_PI/45056, 0x36),
@@ -118,12 +151,24 @@ void sensor_loop(void *args)
     float dt;
     float imu_acc[3], imu_gyro[3], imu_mag[3];
     uint64_t start_time, stop_time;
+    int16_t range[3];
 
     start_time = millis();
     // start_time = micros();
     stop_time = start_time;
 
     while(1){
+        // ToF距離測定
+        if(right_tof.dataReady() 
+            && center_tof.dataReady()
+            && left_tof.dataReady()){
+            range[0] = right_tof.distance();
+            range[1] = center_tof.distance();
+            range[2] = left_tof.distance();            
+
+            memcpy(current_range, range, 3 * sizeof(int16_t));
+        }
+
         // エンコーダパルス取得
         pulse_interval = Encoder.readInterval();          
 
@@ -214,6 +259,7 @@ void loop()
 
     // 接続機器の確認
     bool is_all_connected = true;
+    bool emergency_stop = false;
     bool switch_mode = false;
     float vel[2], auto_vel[2];
     if(PS4.isConnected()){
@@ -226,6 +272,13 @@ void loop()
     }
     else{
         is_all_connected &= false;
+    }
+
+    if(current_range[0] < 120
+        || current_range[1] < 120
+        || current_range[2] < 120)
+    {
+        emergency_stop = true;
     }
 
     Ros.status_msg.data = g_currentState;
@@ -288,6 +341,10 @@ void loop()
             target_vel[0] =  auto_vel[0];
             target_vel[1] =  auto_vel[1];
         break;
+        case MachineState::STOP:
+            target_vel[0] = 0.0f;
+            target_vel[1] = 0.0f;
+        break;
         default:
             log_erro("unknown current state (%x)", g_currentState);
         break;
@@ -333,7 +390,25 @@ void loop()
                 PS4.setLed(255, 0, 0);
                 PS4.sendToController();
             }
+            else if(emergency_stop)
+            {
+                log_info("[main] state switch STOP");
+
+                g_currentState = MachineState::STOP;
+                PS4.setLed(255, 165, 0);
+                PS4.sendToController();
+            }
             else if(!switch_mode)
+            {
+                log_info("[main] state switch MANUAL");
+
+                g_currentState = MachineState::MANUAL;
+                PS4.setLed(0, 0, 255);
+                PS4.sendToController();
+            }            
+        break;
+        case MachineState::STOP:
+            if(!switch_mode)
             {
                 log_info("[main] state switch MANUAL");
 
