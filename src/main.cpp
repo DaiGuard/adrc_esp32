@@ -274,11 +274,11 @@ void loop()
         is_all_connected &= false;
     }
 
-    if(current_range[0] < 120
-        || current_range[1] < 120
-        || current_range[2] < 120)
+    if(current_range[0] < 50
+        || current_range[1] < 50
+        || current_range[2] < 50)
     {
-        emergency_stop = true;
+        // emergency_stop = true;
     }
 
     Ros.status_msg.data = g_currentState;
