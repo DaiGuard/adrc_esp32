@@ -15,17 +15,17 @@
 
 
 // Right ToF Sensor
-const uint8_t rtof_address = 0x28;
-const int rtof_shut_pin = 5;
-Adafruit_VL53L1X right_tof = Adafruit_VL53L1X(rtof_shut_pin);
+// const uint8_t rtof_address = 0x28;
+// const int rtof_shut_pin = 5;
+// Adafruit_VL53L1X right_tof = Adafruit_VL53L1X(rtof_shut_pin);
 // Center ToF Sensor
-const uint8_t ctof_address = 0x27;
-const int ctof_shut_pin = 18;
-Adafruit_VL53L1X center_tof = Adafruit_VL53L1X(ctof_shut_pin);
+// const uint8_t ctof_address = 0x27;
+// const int ctof_shut_pin = 18;
+// Adafruit_VL53L1X center_tof = Adafruit_VL53L1X(ctof_shut_pin);
 // Left ToF Sensor
-const uint8_t ltof_address = 0x26;
-const int ltof_shut_pin = 19;
-Adafruit_VL53L1X left_tof = Adafruit_VL53L1X(ltof_shut_pin);
+// const uint8_t ltof_address = 0x26;
+// const int ltof_shut_pin = 19;
+// Adafruit_VL53L1X left_tof = Adafruit_VL53L1X(ltof_shut_pin);
 
 
 // タスクハンドラ
@@ -96,6 +96,8 @@ uint8_t gEspMAC[6];
 float target_vel[2] = {0.0f, 0.0f};
 float current_vel[2] = {0.0f, 0.0f};
 int16_t current_range[3] = {0, 0, 0};
+uint16_t estop_start = 0u;
+uint16_t estop_end = 0u;
 
 /**
  * @brief センサー用タスク（センサ値取得を担当する）
@@ -109,27 +111,27 @@ void sensor_loop(void *args)
     Wire.setClock(400000);
 
     // ToF初期化
-    right_tof.VL53L1X_Off();
-    center_tof.VL53L1X_Off();
-    left_tof.VL53L1X_Off();
-    RUNTIME_CHECK(right_tof.begin(rtof_address, &Wire),
-        "right tof initialize error");
-    RUNTIME_CHECK(center_tof.begin(ctof_address, &Wire),
-        "center tof initialize error");
-    RUNTIME_CHECK(left_tof.begin(ltof_address, &Wire),
-        "left tof initialize error");
-    RUNTIME_CHECK(right_tof.startRanging(),    
-        "right tof start error");
-    RUNTIME_CHECK(right_tof.setTimingBudget(100),
-        "right tof set budget error");
-    RUNTIME_CHECK(center_tof.startRanging(),
-        "center tof start error");
-    RUNTIME_CHECK(center_tof.setTimingBudget(100),
-        "center tof set budget error");
-    RUNTIME_CHECK(left_tof.startRanging(),
-        "left tof start error");
-    RUNTIME_CHECK(left_tof.setTimingBudget(100),
-        "left tof set budget error");
+    // right_tof.VL53L1X_Off();
+    // center_tof.VL53L1X_Off();
+    // left_tof.VL53L1X_Off();
+    // RUNTIME_CHECK(right_tof.begin(rtof_address, &Wire),
+    //     "right tof initialize error");
+    // RUNTIME_CHECK(center_tof.begin(ctof_address, &Wire),
+    //     "center tof initialize error");
+    // RUNTIME_CHECK(left_tof.begin(ltof_address, &Wire),
+    //     "left tof initialize error");
+    // RUNTIME_CHECK(right_tof.startRanging(),    
+    //     "right tof start error");
+    // RUNTIME_CHECK(right_tof.setTimingBudget(100),
+    //     "right tof set budget error");
+    // RUNTIME_CHECK(center_tof.startRanging(),
+    //     "center tof start error");
+    // RUNTIME_CHECK(center_tof.setTimingBudget(100),
+    //     "center tof set budget error");
+    // RUNTIME_CHECK(left_tof.startRanging(),
+    //     "left tof start error");
+    // RUNTIME_CHECK(left_tof.setTimingBudget(100),
+    //     "left tof set budget error");
     
     // エンコーダ初期化
     RUNTIME_CHECK(Encoder.begin(&Wire, 0.0638*M_PI/45056, 0x36),
@@ -159,15 +161,15 @@ void sensor_loop(void *args)
 
     while(1){
         // ToF距離測定
-        if(right_tof.dataReady() 
-            && center_tof.dataReady()
-            && left_tof.dataReady()){
-            range[0] = right_tof.distance();
-            range[1] = center_tof.distance();
-            range[2] = left_tof.distance();            
+        // if(right_tof.dataReady() 
+            // && center_tof.dataReady()
+            // && left_tof.dataReady()){
+            // range[0] = right_tof.distance();
+            // range[1] = center_tof.distance();
+            // range[2] = left_tof.distance();            
 
-            memcpy(current_range, range, 3 * sizeof(int16_t));
-        }
+            // memcpy(current_range, range, 3 * sizeof(int16_t));
+        // }
 
         // エンコーダパルス取得
         pulse_interval = Encoder.readInterval();          
@@ -274,12 +276,16 @@ void loop()
         is_all_connected &= false;
     }
 
-    if(current_range[0] < 50
-        || current_range[1] < 50
-        || current_range[2] < 50)
-    {
-        // emergency_stop = true;
-    }
+    // Serial.print(current_range[0]); Serial.print(", ");
+    // Serial.print(current_range[1]); Serial.print(", ");
+    // Serial.print(current_range[2]); Serial.print(", ");
+    // Serial.println();
+    // if((0 <= current_range[0] && current_range[0] < 50)
+    //     // || (0 <= current_range[1] && current_range[1] < 50)
+    //     || (0 <= current_range[2] && current_range[2] < 50))
+    // {
+    //     emergency_stop = true;
+    // }
 
     Ros.status_msg.data = g_currentState;
     Ros.cur_vel_msg.linear.x = target_vel[0];
@@ -342,7 +348,7 @@ void loop()
             target_vel[1] =  auto_vel[1];
         break;
         case MachineState::STOP:
-            target_vel[0] = 0.0f;
+            target_vel[0] = -0.07f;
             target_vel[1] = 0.0f;
         break;
         default:
@@ -397,6 +403,8 @@ void loop()
                 g_currentState = MachineState::STOP;
                 PS4.setLed(255, 165, 0);
                 PS4.sendToController();
+
+                estop_start = millis();
             }
             else if(!switch_mode)
             {
@@ -408,7 +416,15 @@ void loop()
             }            
         break;
         case MachineState::STOP:
-            if(!switch_mode)
+            estop_end = millis();
+            if((estop_end - estop_start) > 800){
+                log_info("[main] state switch AUTO");
+
+                g_currentState = MachineState::AUTO;
+                PS4.setLed(0, 255, 0);
+                PS4.sendToController();
+            }
+            else if(!switch_mode)
             {
                 log_info("[main] state switch MANUAL");
 
