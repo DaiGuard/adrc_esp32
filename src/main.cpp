@@ -142,8 +142,8 @@ void sensor_loop(void *args)
         "mu initialize error");
 
     // モータドライバ初期化
-    Driver.setAchRange(500, 2400, 1450);
-    Driver.setBchRange(700, 2700, 1650);
+    Driver.setAchRange(500, 2400, 1400);
+    Driver.setBchRange(1100, 2200, 1650);
     RUNTIME_CHECK(Driver.begin(33, 25, 26, 27),
         "driver initialize error");
 
